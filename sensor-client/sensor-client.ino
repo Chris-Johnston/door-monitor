@@ -6,6 +6,8 @@
 
 #define LED_BUILTIN 2
 
+// TODO see if I can report voltage to indicate battery health
+
 // how frequently to report the state, even if the pin
 // interrupt has not fired
 #define POLL_TIMER (360000000) // 1 hour
