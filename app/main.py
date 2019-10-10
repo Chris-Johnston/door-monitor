@@ -1,10 +1,11 @@
-from flask import Flask
+from flask import Flask, request
 app = Flask(__name__)
 
 import sensor
 
-@app.route("/")
+@app.route("/", methods = ["GET", "POST"])
 def test():
+    print(request.data)
     return "test"
 
 if __name__ == "__main__":
