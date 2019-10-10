@@ -2,69 +2,20 @@
 #include "WiFi.h"
 #include "HTTPClient.h"
 #include "config.h"
+#include <ArduinoJson.h>
 
 #define LED_BUILTIN 2
 
 // how frequently to report the state, even if the pin
 // interrupt has not fired
-#define POLL_TIMER (60 * 60 * 1000000) // 1 hour
-
+#define POLL_TIMER (360000000) // 1 hour
 
 RTC_DATA_ATTR int bootCount = 0;
 
-// ESP_EXT1_WAKEUP_ANY_HIGH
-// wake up when any are high, need to ensure wiring works with this
-
-void setup()
+void blink()
 {
-    bootCount++;
-    
-    blonk();
-
-    Serial.begin(115200);
-    Serial.println("starting");
-
-    for (auto sensor : sensors)
-    {
-        pinMode(sensor.pin, INPUT);
-        Serial.print("State: ");
-        Serial.println(digitalRead(sensor.pin));
-    }
-
-    
-    Serial.println("Starting sensor client.");
-    Serial.println(bootCount);
-
-    connectWifi();
-
-    auto wakeup_reason = esp_sleep_get_wakeup_cause();
-
-  switch(wakeup_reason){
-    case ESP_SLEEP_WAKEUP_EXT0 : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-    case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-    case ESP_SLEEP_WAKEUP_TIMER : Serial.println("Wakeup caused by timer"); break;
-    case ESP_SLEEP_WAKEUP_TOUCHPAD : Serial.println("Wakeup caused by touchpad"); break;
-    case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup caused by ULP program"); break;
-    default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
-  }
-
-    reportBootup();
-
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(32, INPUT);
-
-    // should deep sleep for a minute
-    // auto mask = (1 << 32) | (1 << 39);
-    // uint64_t mask = (1 << 32);
-    auto response = esp_sleep_enable_ext1_wakeup(0x100000000, ESP_EXT1_WAKEUP_ANY_HIGH);
-    Serial.println(response);
-
-    esp_sleep_enable_timer_wakeup(10 * 1000000);
-}
-
-void blonk()
-{
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 2; i++)
     {
         digitalWrite(LED_BUILTIN, HIGH);
         delay(100);
@@ -73,13 +24,55 @@ void blonk()
     }
 }
 
-void loop()
+void printWakeupCause(int wakeupCause)
 {
-    Serial.println("UP");
-    blonk();
+    Serial.print("Restart due to ");
+    switch (wakeupCause)
+    {
+        case ESP_SLEEP_WAKEUP_EXT1:
+            Serial.println("pin state");
+            break;
+        case ESP_SLEEP_WAKEUP_TIMER:
+            Serial.println("timer");
+            break;
+        default:
+            Serial.println("power up");
+            break;
+    }
+}
+
+void printState()
+{
+    for (auto sensor : sensors)
+    {
+        Serial.print("Pin ");
+        Serial.print(sensor.pin);
+        Serial.print(" : ");
+        Serial.println(sensor.state);
+    }
+}
+
+void setupWakeup()
+{
+    // timer wakeup
+    int state = esp_sleep_enable_timer_wakeup(POLL_TIMER);
+    if (state != ESP_OK)
+    {
+        Serial.println("Got error when setting timer wakeup.");
+    }
+
+    // pin wakeup
+    uint64_t mask = 0;
+    for (auto sensor : sensors)
+    {
+        mask |= ((unsigned long long)1 << sensor.pin);
+    }
     
-    Serial.println("Entering deep sleep.");
-    esp_deep_sleep_start();
+    state = esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_HIGH);
+    if (state != ESP_OK)
+    {
+        Serial.println("Got error when setting ext1 wakeup.");
+    }
 }
 
 void connectWifi()
@@ -93,11 +86,81 @@ void connectWifi()
     // connected
 }
 
-void reportBootup()
+void reportStatus(String payload)
 {
     HTTPClient client;
-    client.begin(BOOTUP_URL);
-    int response = client.POST("this is the payload");
-    Serial.println("Got response");
+    client.begin(REPORTING_URL);
+    int response = client.POST(payload);
+    Serial.print("Got response: ");
     Serial.println(response);
+}
+
+void waitLow()
+{
+    bool anyHigh = false;
+    for (auto sensor : sensors)
+    {
+        anyHigh |= digitalRead(sensor.pin) == HIGH;
+    }
+
+    while (anyHigh) // block while any pins are HIGh
+    {
+        anyHigh = false;
+        Serial.println("Waiting for LOW state.");
+        delay(15000);
+        for (auto sensor : sensors)
+        {
+            anyHigh |= digitalRead(sensor.pin) == HIGH;
+        }
+    }
+}
+
+void setup()
+{
+    // read the state of the pins first thing
+    for (int i = 0; i < NUM_SENSORS; i++)
+    {
+        pinMode(sensors[i].pin, INPUT);
+        sensors[i].state = digitalRead(sensors[i].pin) == HIGH;
+    }
+
+    bootCount++;
+    Serial.begin(115200);
+
+    // blink the led on boot
+    blink();
+
+    int wakeupCause = esp_sleep_get_wakeup_cause();
+    printWakeupCause(wakeupCause);
+    printState();
+
+    // generate the json payload
+    StaticJsonDocument<400> doc; // TODO - determine a good default for staticjsondocument
+    doc["cause"] = wakeupCause;
+    JsonArray sensorsArr = doc.createNestedArray("sensors");
+    for (auto sensor : sensors)
+    {
+        auto nestedObj = sensorsArr.createNestedObject();
+        nestedObj["name"] = sensor.name;
+        nestedObj["state"] = sensor.state;
+    }
+    String serialized;
+    serializeJson(doc, serialized);
+    Serial.print("Sending: ");
+    Serial.println(serialized);
+
+    connectWifi();
+    reportStatus(serialized);
+
+    // wait for all sensors to return to LOW state
+    waitLow();
+
+    setupWakeup();
+    Serial.println("Entering deep sleep.");
+    esp_deep_sleep_start();
+}
+
+void loop()
+{
+    // unused
 }
