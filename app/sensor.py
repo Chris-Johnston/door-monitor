@@ -25,14 +25,13 @@ def log_sensor():
 
     return "Ok"
 
-@sensor_page.route("/api/sensor", methods = ["GET"])
-def get_sensors():
+def get_sensors_internal():
     """
     Gets the last reported state of all sensors that have reported
     in the last week. (This ignores stale readings)
     """
     query = """
-    SELECT sensor_name, b.id, b.state, b.cause, b.timestamp
+    SELECT  b.id, sensor_name, b.state, b.cause, b.timestamp
     FROM log a
     INNER JOIN (
         SELECT name as sensor_name,
@@ -56,7 +55,11 @@ def get_sensors():
         "state": state,
         "cause": cause,
         "timestamp": timestamp})
-    return jsonify(output)
+    return output
+
+@sensor_page.route("/api/sensor", methods = ["GET"])
+def get_sensors():
+    return jsonify(get_sensors_internal())
 
 @sensor_page.route("/api/sensor/<name>", methods = ["GET"])
 def get_sensor(name: str):
@@ -80,17 +83,16 @@ def get_sensor(name: str):
         "timestamp": timestamp
     })
 
-@sensor_page.route("/api/sensor/<name>/history", methods = ["GET"])
-def get_sensor_history(name: str):
+def get_sensor_history_internal(name: str, any: bool):
     query = """
     SELECT id, name, state, cause, timestamp
     FROM log
-    WHERE DATE(timestamp, 'weekday 0', '-7 days') AND name = ?
+    WHERE DATE(timestamp, 'weekday 0', '-7 days') AND (name = ? OR ?)
     ORDER BY timestamp DESC
     LIMIT 50
     """
     c = DB.cursor()
-    c.execute(query, (name,))
+    c.execute(query, (name, any))
     results = c.fetchall()
     output = []
     for log_id, name, state, cause, timestamp in results:
@@ -100,4 +102,12 @@ def get_sensor_history(name: str):
         "state": state,
         "cause": cause,
         "timestamp": timestamp})
-    return jsonify(output)
+    return output
+
+@sensor_page.route("/api/sensor/history", methods = ["GET"])
+def get_history():
+    return jsonify(get_sensor_history_internal("", True))
+
+@sensor_page.route("/api/sensor/<name>/history", methods = ["GET"])
+def get_sensor_history(name: str):
+    return jsonify(get_sensor_history_internal(name, False))
