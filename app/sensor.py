@@ -2,8 +2,6 @@ from flask import request, Blueprint, jsonify
 import datetime
 from database import DB
 
-print("AAaa")
-
 sensor_page = Blueprint('sensor_page', __name__)
 
 @sensor_page.route("/api/sensor/test")
