@@ -1,7 +1,7 @@
 from flask import Flask, request
+from sensor import sensor_page
 app = Flask(__name__)
-
-import sensor
+app.register_blueprint(sensor_page)
 
 @app.route("/", methods = ["GET", "POST"])
 def test():
