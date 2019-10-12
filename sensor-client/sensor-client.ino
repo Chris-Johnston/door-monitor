@@ -15,6 +15,8 @@
 
 RTC_DATA_ATTR int bootCount = 0;
 
+#define CAUSE_SENSOR_CLOSED 100
+
 void blink()
 {
     pinMode(LED_BUILTIN, OUTPUT);
@@ -93,19 +95,22 @@ void reportStatus(String payload)
 {
     HTTPClient client;
     client.begin(REPORTING_URL);
+    client.addHeader("Content-Type", "application/json");
     int response = client.POST(payload);
     Serial.print("Got response: ");
     Serial.println(response);
 }
 
-void waitLow()
+bool waitLow()
 {
+    bool requiredWait = false;
     bool anyHigh = false;
     for (auto sensor : sensors)
     {
         anyHigh |= digitalRead(sensor.pin) == HIGH;
     }
 
+    requiredWait = anyHigh;
     while (anyHigh) // block while any pins are HIGh
     {
         anyHigh = false;
@@ -116,6 +121,23 @@ void waitLow()
             anyHigh |= digitalRead(sensor.pin) == HIGH;
         }
     }
+    return requiredWait;
+}
+
+String generatePayload(int wakeupCause)
+{
+    StaticJsonDocument<400> doc; // TODO - determine a good default for staticjsondocument
+    doc["cause"] = wakeupCause;
+    JsonArray sensorsArr = doc.createNestedArray("sensors");
+    for (auto sensor : sensors)
+    {
+        auto nestedObj = sensorsArr.createNestedObject();
+        nestedObj["name"] = sensor.name;
+        nestedObj["state"] = sensor.state;
+    }
+    String serialized;
+    serializeJson(doc, serialized);
+    return serialized;
 }
 
 void setup()
@@ -138,25 +160,34 @@ void setup()
     printState();
 
     // generate the json payload
-    StaticJsonDocument<400> doc; // TODO - determine a good default for staticjsondocument
-    doc["cause"] = wakeupCause;
-    JsonArray sensorsArr = doc.createNestedArray("sensors");
-    for (auto sensor : sensors)
-    {
-        auto nestedObj = sensorsArr.createNestedObject();
-        nestedObj["name"] = sensor.name;
-        nestedObj["state"] = sensor.state;
-    }
-    String serialized;
-    serializeJson(doc, serialized);
+    String serialized = generatePayload(wakeupCause);
     Serial.print("Sending: ");
     Serial.println(serialized);
-
     connectWifi();
     reportStatus(serialized);
 
     // wait for all sensors to return to LOW state
-    waitLow();
+    bool anyHigh = waitLow();
+
+    // if any pins were high and required waiting, log again when they
+    // are closed
+    if (anyHigh)
+    {
+        Serial.println("Pins were high, logging again now that pins are LOW.");
+        // change the wakeup cause for the matching close message
+        wakeupCause = CAUSE_SENSOR_CLOSED;
+
+        // log when the sensors go low
+        // read state again
+        for (int i = 0; i < NUM_SENSORS; i++)
+        {
+            sensors[i].state = digitalRead(sensors[i].pin) == HIGH;
+        }
+        Serial.println("Reporting:");
+        serialized = generatePayload(wakeupCause);
+        Serial.println(serialized);
+        reportStatus(serialized);
+    }
 
     setupWakeup();
     Serial.println("Entering deep sleep.");
