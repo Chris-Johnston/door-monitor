@@ -7,6 +7,7 @@
 #define LED_BUILTIN 2
 
 // TODO see if I can report voltage to indicate battery health
+// might need to hook up to ADC
 
 // how frequently to report the state, even if the pin
 // interrupt has not fired
@@ -109,7 +110,7 @@ void waitLow()
     {
         anyHigh = false;
         Serial.println("Waiting for LOW state.");
-        delay(15000);
+        delay(5000);
         for (auto sensor : sensors)
         {
             anyHigh |= digitalRead(sensor.pin) == HIGH;
