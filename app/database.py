@@ -1,6 +1,6 @@
 import sqlite3
 # TODO set this up for docker
-DB = sqlite3.connect('history.db', check_same_thread=False)
+DB = sqlite3.connect('history.db', check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
 
 def init_db():
     cur = DB.cursor()
@@ -12,7 +12,7 @@ def init_db():
         name TEXT,
         state BOOLEAN,
         cause TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
         """
     )
     DB.commit()
