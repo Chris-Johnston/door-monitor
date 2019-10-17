@@ -11,7 +11,7 @@
 
 // how frequently to report the state, even if the pin
 // interrupt has not fired
-#define POLL_TIMER (360000000) // 1 hour
+#define POLL_TIMER (3600000000) // 1 hour
 
 RTC_DATA_ATTR int bootCount = 0;
 

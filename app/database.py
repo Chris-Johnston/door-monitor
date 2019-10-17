@@ -15,6 +15,18 @@ def init_db():
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
         """
     )
+    # table containing webhook settings
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS webhooks
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT,
+        endpointUrl TEXT,
+        authorizationHeader TEXT,
+        enabled BOOLEAN,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+        """
+    )
     DB.commit()
 
 init_db()

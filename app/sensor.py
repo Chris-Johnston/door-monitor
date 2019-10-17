@@ -1,8 +1,21 @@
 from flask import request, Blueprint, jsonify
 import datetime
 from database import DB
+from webhook_client import notify_webhooks
 
 sensor_page = Blueprint('sensor_page', __name__)
+
+state_mapping = {
+    True: "open",
+    False: "closed"
+}
+
+cause_mapping = {
+    0: "Initial boot-up.",
+    3: "Sensor state changed.",
+    4: "Timer activated.",
+    100: "Open sensor reverted to closed."
+}
 
 @sensor_page.route("/api/sensor/test")
 def test_sensor():
@@ -17,10 +30,14 @@ def log_sensor():
     cause = request.json["cause"]
     for sensor in request.json["sensors"]:
         name = sensor["name"]
-        state = 1 if sensor["state"] else 0
+        state_bool = sensor["state"]
+        state = 1 if state_bool else 0
 
         values = (name, state, cause)
         c.execute("INSERT INTO log (name, state, cause) VALUES (?, ?, ?)", values)
+
+        # TODO map the cause to a string
+        notify_webhooks((name, state_bool, cause, state_mapping[state_bool], cause_mapping[cause]))
     DB.commit()
 
     return "Ok"

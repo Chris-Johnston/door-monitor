@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    </head>
+    <body>
+        <h1>Edit webhook #{{ webhook.id }}</h1>
+        <form>
+            <label for="type">
+                Type
+            </label>
+            <input type="text" id="type" value="{{ webhook.type }}" />
+            <br />
+
+            <label for="endpoint_url">
+                Endpoint Url
+            </label>
+            <input type="text" id="endpoint_url" value="{{ webhook.endpoint_url }}" />
+            <br />
+
+            <label for="authorization_header">
+                Authorization Header
+            </label>
+            <input type="text" id="authorization_header" value="{{ webhook.authorization_header }}" />
+            <br />
+
+            <label for="authorization_header">
+                Authorization Header
+            </label>
+            <input type="checkbox" id="enabled" value="{{ webhook.enabled }}" />
+            <br />
+        </form>
+    </body>
+</html>

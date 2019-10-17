@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    </head>
+    <body>
+        <h1>Webhooks</h1>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <td>ID</td>
+                    <td>Type</td>
+                    <td>URL</td>
+                    <td>Auth Header</td>
+                    <td>Is Enabled</td>
+                    <td>Last Modified</td>
+                </thead>
+                {% for webhook in webhooks %}
+                <tr>
+                    <td>{{ webhook.id }}</td>
+                    <td>{{ webhook.type }}</td>
+                    <td>{{ webhook.authorizationHeader }}</td>
+                    <td>{{ webhook.enabled }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </body>
+</html>
