@@ -8,31 +8,33 @@
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     </head>
     <body>
-        <h1>Edit webhook #{{ webhook.id }}</h1>
-        <form>
+        <h1>{{ title }}</h1>
+        <form method="POST" action="{{ action }}">
             <label for="type">
                 Type
             </label>
-            <input type="text" id="type" value="{{ webhook.type }}" />
+            <input type="text" name="type" id="type" value="{{ webhook.webhook_type }}" />
             <br />
 
             <label for="endpoint_url">
                 Endpoint Url
             </label>
-            <input type="text" id="endpoint_url" value="{{ webhook.endpoint_url }}" />
+            <input type="text" name="endpoint_url" id="endpoint_url" value="{{ webhook.endpoint_url }}" />
             <br />
 
             <label for="authorization_header">
                 Authorization Header
             </label>
-            <input type="text" id="authorization_header" value="{{ webhook.authorization_header }}" />
+            <input type="text" name="authorization_header" id="authorization_header" value="{{ webhook.authorization_header }}" />
             <br />
 
-            <label for="authorization_header">
-                Authorization Header
+            <label for="enabled">
+                Is Enabled
             </label>
-            <input type="checkbox" id="enabled" value="{{ webhook.enabled }}" />
+            <input type="checkbox" name="enabled" id="enabled" value="{{ webhook.enabled }}" checked="{{ webhook.enabled }}" />
             <br />
+
+            <input type="submit" value="Submit">
         </form>
     </body>
 </html>

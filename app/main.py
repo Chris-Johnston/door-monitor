@@ -1,8 +1,10 @@
 import json
 from flask import Flask, request, render_template
 from sensor import sensor_page, get_sensors_internal, get_sensor_history_internal
+from settings import settings_page
 app = Flask(__name__)
 app.register_blueprint(sensor_page)
+app.register_blueprint(settings_page)
 
 def get_timeline_data():
     sensor_history = get_sensor_history_internal("", True)

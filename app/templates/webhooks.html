@@ -21,13 +21,17 @@
                 </thead>
                 {% for webhook in webhooks %}
                 <tr>
-                    <td>{{ webhook.id }}</td>
-                    <td>{{ webhook.type }}</td>
-                    <td>{{ webhook.authorizationHeader }}</td>
-                    <td>{{ webhook.enabled }}</td>
+                    <td><a href="/settings/webhooks/{{ webhook['webhook_id'] }}">{{ webhook["webhook_id"] }}</a></td>
+                    <td>{{ webhook["webhook_type"] }}</td>
+                    <td>{{ webhook["endpoint_secret"] }}</td>
+                    <td>{{ webhook["authorization_secret"] }}</td>
+                    <td>{{ webhook["enabled"] }}</td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
+        <a href="/settings/webhooks/new">
+            Create New Webhook
+        </a>
     </body>
 </html>
