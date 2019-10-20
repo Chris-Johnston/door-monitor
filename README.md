@@ -29,6 +29,10 @@ using the webserver.
 
 <img src="docs/img/webhook&#32;settings.png" alt="image of the configure webhooks page" height="250" />
 
+This integrates with Home Assistant very well.
+
+<img src="docs/img/home_assistant_integration.png" alt="image of integration with home assistant" height="200">
+
 Using the ESP32's "deep sleep" mode and pin interrupts,
 the ESP32 is able to run using very little power.
 
