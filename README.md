@@ -2,7 +2,8 @@
 
 An IOT solution to forgetting to lock the door using an ESP32 and a Flask
 server. Integrates with Home Assistant and Discord to provide instant
-notification of the locked or unlocked state of the door.
+notification of the locked or unlocked state of the door lock and the state
+of the door being open.
 
 <img src="docs/img/installed_sensor.jpg" alt="image of the installed sensor"
 height="500" />
