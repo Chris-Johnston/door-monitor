@@ -3,4 +3,4 @@
 curl --header "Content-Type: application/json" \
   --request POST \
   --data '{"cause": 0, "sensors": [{ "name": "TEST", "state": false }]}' \
-  http://localhost:8080/api/sensor
+  http://localhost:8088/api/sensor
