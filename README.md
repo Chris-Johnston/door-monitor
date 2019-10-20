@@ -8,6 +8,11 @@ of the door being open.
 <img src="docs/img/installed_sensor.jpg" alt="image of the installed sensor"
 height="500" />
 
+Using Home Assistant and Twilio, I can text myself when I leave the
+house without locking:
+
+<img src="docs/img/sms_notifications.jpg" alt="image of sms notifications" height="200">
+
 ## Description
 
 This uses an ESP32 dev board connected to two reed switches, one placed on the
