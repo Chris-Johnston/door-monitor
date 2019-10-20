@@ -4,7 +4,8 @@ An IOT solution to forgetting to lock the door using an ESP32 and a Flask
 server. Integrates with Home Assistant and Discord to provide instant
 notifications.
 
-![Image of the installed sensor.](docs/img/installed_sensor.jpg)
+<img src="docs/img/installed_sensor.jpg" alt="image of the installed sensor"
+height="500" />
 
 ## Description
 
@@ -13,24 +14,25 @@ door frame, one on the door lock. Hourly, and when the state of the lock or
 door sensors are set to "open",
 the board will log to the Flask server that collects this data.
 
-![Image of the reed switch.](docs/img/reed_switch.jpg)
+<img src="docs/img/reed_switch.jpg" alt="image of the reed switch" 
+height="250" />
 
 The included magnets to pair with the reed switches I bought were too big
 to fit where I needed them, so I used stronger, smaller magnets that
 I taped to the lock and the door frame.
 
-![Image of the installed lock sensor.](docs/img/installed_lock_sensor.jpg)
+<img src="docs/img/installed_lock_sensor.jpg" alt="image of the installed lock sensor" height="250" />
 
 The data sent from the ESP32 to the Flask server gets forwarded
 along to each of the configured webhooks. This can be configured
 using the webserver.
 
-![Image of the configure webhooks page.](docs/img/webhook&#32;settings.png)
+<img src="docs/img/webhook&#32;settings.png" alt="image of the configure webhooks page" height="250" />
 
 Using the ESP32's "deep sleep" mode and pin interrupts,
 the ESP32 is able to run using very little power.
 
-![Image of the assembled ESP32 board.](docs/img/assembled_board.jpg)
+<img src="docs/img/assembled_board.jpg" alt="image of the assembled esp32 board" height="350" />
 
 While the ESP32 is very light on power, the dev board that I'm using
 is not.
@@ -39,7 +41,7 @@ the board was measured to run at 9.8mA in deep sleep mode.
 Most of the current
 draw is from the USB Controller and voltage regulator.
 
-![Current draw of the ESP32 dev board.](docs/img/devkit_current_draw.jpg)
+<img src="docs/img/devkit_current_draw.jpg" alt="current draw of esp32 dev board" height="250" />
 
 Running on 4 AA batteries in series (2000-3000 mAh),
 the sensor is estimated to run for roughly 200-300 hours.
