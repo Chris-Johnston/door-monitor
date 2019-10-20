@@ -1,5 +1,5 @@
 import sqlite3
-DB = sqlite3.connect('/app/database.db', check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
+DB = sqlite3.connect('/app/data/database.db', check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
 
 def init_db():
     cur = DB.cursor()
