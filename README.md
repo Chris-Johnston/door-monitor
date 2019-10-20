@@ -2,7 +2,7 @@
 
 An IOT solution to forgetting to lock the door using an ESP32 and a Flask
 server. Integrates with Home Assistant and Discord to provide instant
-notifications.
+notification of the locked or unlocked state of the door.
 
 <img src="docs/img/installed_sensor.jpg" alt="image of the installed sensor"
 height="500" />
@@ -14,7 +14,7 @@ door frame, one on the door lock. Hourly, and when the state of the lock or
 door sensors are set to "open",
 the board will log to the Flask server that collects this data.
 
-<img src="docs/img/reed_switch.jpg" alt="image of the reed switch" 
+<img src="docs/img/reed_switch.jpg" alt="image of the reed switch"
 height="250" />
 
 The included magnets to pair with the reed switches I bought were too big
