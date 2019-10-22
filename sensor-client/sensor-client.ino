@@ -13,6 +13,15 @@
 // interrupt has not fired
 #define POLL_TIMER (3600000000) // 1 hour
 
+// the amount of time to wait for pins to go LOW
+// if they were open
+#define SHORT_WAIT_DELAY 10000 // 10 seconds
+
+// how frequently to poll and report the state
+// if entering deep sleep because sensors
+// are open longer than SHORT_WAIT_DELAY
+#define SHORT_POLL_TIMER (300000000) // 5 minutes
+
 RTC_DATA_ATTR int bootCount = 0;
 
 #define CAUSE_SENSOR_CLOSED 100
@@ -80,6 +89,36 @@ void setupWakeup()
     }
 }
 
+void setupShortWakeup()
+{
+    // timer wakeup for the short interval
+    int state = esp_sleep_enable_timer_wakeup(SHORT_POLL_TIMER);
+    if (state != ESP_OK)
+    {
+        Serial.println("Got error when setting short timer wakeup.");
+    }
+
+    // pin wakeup
+    // only listen for the pins that are low
+    // as this short wakeup period is for the ones that are high
+    uint64_t mask = 0;
+    for (auto sensor : sensors)
+    {
+        if (!sensor.state)
+            mask |= ((unsigned long long)1 << sensor.pin);
+    }
+    
+    // only use mask if set
+    if (mask != 0)
+    {
+        state = esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_HIGH);
+        if (state != ESP_OK)
+        {
+            Serial.println("Got error when setting ext1 wakeup.");
+        }
+    }
+}
+
 void connectWifi()
 {
     WiFi.begin(WIFI_SSID, WIFI_PSK);
@@ -105,22 +144,41 @@ bool waitLow()
 {
     bool requiredWait = false;
     bool anyHigh = false;
+
+    // check to see if any pins are high
     for (auto sensor : sensors)
     {
         anyHigh |= digitalRead(sensor.pin) == HIGH;
     }
 
     requiredWait = anyHigh;
-    while (anyHigh) // block while any pins are HIGh
+
+    // if pins are high, wait 10 seconds and check again
+    if (anyHigh)
     {
         anyHigh = false;
-        Serial.println("Waiting for LOW state.");
-        delay(5000);
-        for (auto sensor : sensors)
+        Serial.println("Waiting 10 seconds for LOW state.");
+        delay(SHORT_WAIT_DELAY);
+
+        for (int i = 0; i < NUM_SENSORS; i++)
         {
-            anyHigh |= digitalRead(sensor.pin) == HIGH;
+            sensors[i].state = digitalRead(sensors[i].pin) == HIGH;
+            anyHigh |= sensors[i].state;
         }
     }
+
+    // if pins are still high after waiting 5 seconds
+    // enter the short deep sleep wakeup interval
+    // which will re-scan every 5 minutes
+    // and ignore the currently high pins but still handle the low pins
+    // once this resets, will resume hour long interval
+    if (anyHigh)
+    {
+        setupShortWakeup();
+        Serial.println("Entering short deep sleep.");
+        esp_deep_sleep_start();
+    }
+
     return requiredWait;
 }
 
@@ -164,12 +222,16 @@ void setup()
     Serial.print("Sending: ");
     Serial.println(serialized);
     connectWifi();
+
+    // report the status of the pins
     reportStatus(serialized);
 
     // wait for all sensors to return to LOW state
     bool anyHigh = waitLow();
 
-    // if any pins were high and required waiting, log again when they
+    // if any pins were high and required waiting
+    // for less than 10 seconds
+    // log again when they
     // are closed
     if (anyHigh)
     {
