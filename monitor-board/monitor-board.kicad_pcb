@@ -2,7 +2,7 @@
 
   (general
     (thickness 1.6)
-    (drawings 13)
+    (drawings 12)
     (tracks 224)
     (zones 0)
     (modules 26)
@@ -1523,9 +1523,6 @@
     )
   )
 
-  (gr_text "todo check the U1 power regulartor footprint, I don't think that it is right\n" (at 73.66 20.32) (layer F.Cu)
-    (effects (font (size 1.5 1.5) (thickness 0.3)))
-  )
   (gr_text "3.3VDC ONLY!" (at 51.816 61.976) (layer F.SilkS)
     (effects (font (size 0.7 0.7) (thickness 0.15)))
   )
