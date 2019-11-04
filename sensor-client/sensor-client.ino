@@ -11,22 +11,15 @@
 
 // how frequently to report the state, even if the pin
 // interrupt has not fired
-#define POLL_TIMER (3600000000) // 1 hour
+#define POLL_TIMER (6 * 3600000000) // 1 hour * 6
 
 // the amount of time to wait for pins to go LOW
 // if they were open
 #define SHORT_WAIT_DELAY 15000 // 15 seconds
 
-// how frequently to poll and report the state
-// if entering deep sleep because sensors
-// are open longer than SHORT_WAIT_DELAY
-#define SHORT_POLL_TIMER (300000000) // 5 minutes
-
 RTC_DATA_ATTR int bootCount = 0;
 
 #define CAUSE_SENSOR_CLOSED 100
-#define CAUSE_SHORT_SLEEP 101
-
 
 #define MAX_MESSAGE_QUEUE 50 // don't really expect more than 10 state updates, but ESP32 has a lot of ram 
 int queueIndex = 0;
@@ -105,7 +98,7 @@ void connectWifi()
     WiFi.begin(WIFI_SSID, WIFI_PSK);
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(100);
+        delay(1500);
         Serial.println("Connecting to wifi...");
     }
     // connected
@@ -177,8 +170,9 @@ void sendStateQueue()
     }
 }
 
-void interruptHandler()
+void IRAM_ATTR interruptHandler()
 {
+    // need to handle debouncing
     updateStatus();
 
     report();
@@ -186,9 +180,6 @@ void interruptHandler()
 
 void report()
 {
-    // blink the led on report
-    blink();
-
     int wakeupCause = esp_sleep_get_wakeup_cause();
     printWakeupCause(wakeupCause);
     printState();
@@ -198,12 +189,6 @@ void report()
     // in a short amount of time such that the wifi doesn't have time to connect
     // this state transition is not lost, as long as the interrupt had enough time
     queueStatus(wakeupCause);
-
-    // this could take time, so do it after logging state
-    connectWifi();
-
-    // send the contents of the message queue once connected
-    sendStateQueue();
 }
 
 void setup()
@@ -225,9 +210,25 @@ void setup()
     Serial.begin(115200);
     report();
 
-    // allow 10 seconds for handlers to update state
-    // this prevents a restart if the state changes in a short amount of time
-    delay(SHORT_WAIT_DELAY);
+    // blink the led on boot
+    blink();
+
+    // this could take time, so do it after logging state
+    connectWifi();
+
+    // send the contents of the message queue once connected
+    sendStateQueue();
+
+    // update if any queue messages added every second
+    for (int i = 0; i < SHORT_WAIT_DELAY / 1000; i++)
+    {
+        // send state queue if there are any updates
+        // this prevents restart for changes in a short amount of time
+        sendStateQueue();
+        delay(1000);
+    }
+
+    // still need to have a way of more frequent deep sleep for pins that are high
 
     // enter deep sleep with pin interrupts and 1 hour timer
     setupWakeup();
