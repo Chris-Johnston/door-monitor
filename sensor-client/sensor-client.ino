@@ -11,7 +11,7 @@
 
 // how frequently to report the state, even if the pin
 // interrupt has not fired
-#define POLL_TIMER (3600000000) // 1 hour
+#define POLL_TIMER (6 * 3600000000) // 6 * 1 hour
 
 // the amount of time to wait for pins to go LOW
 // if they were open
