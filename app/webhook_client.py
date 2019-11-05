@@ -51,7 +51,7 @@ def notify_homeassistant(sensor_values, endpoint_data):
 
 
 def notify_discord(sensor_values, endpoint_data):
-    if sensor_values[2] == 3 and not sensor_values[1]:
+    if sensor_values[2] in [3, 4, 100, 101] and not sensor_values[1]:
         return
 
     print("notifying discord")
