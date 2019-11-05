@@ -15,11 +15,16 @@
 
 // the amount of time to wait for pins to go LOW
 // if they were open
-#define SHORT_WAIT_DELAY 15000 // 15 seconds
+#define SHORT_WAIT_DELAY (15000 * 1000) // 15 seconds
 
 RTC_DATA_ATTR int bootCount = 0;
 
+long lastMicros = 0;
+long waitMicros = 0;
+#define DEBOUNCE_TIME (200 * 1000) // 200 ms
+
 #define CAUSE_SENSOR_CLOSED 100
+#define CAUSE_INTERRUPT 101
 
 #define MAX_MESSAGE_QUEUE 50 // don't really expect more than 10 state updates, but ESP32 has a lot of ram 
 int queueIndex = 0;
@@ -48,6 +53,9 @@ void printWakeupCause(int wakeupCause)
             break;
         case ESP_SLEEP_WAKEUP_TIMER:
             Serial.println("timer");
+            break;
+        case CAUSE_INTERRUPT:
+            Serial.println("Interrupt");
             break;
         default:
             Serial.println("power up");
@@ -147,6 +155,12 @@ void updateStatus()
 
 void sendStateQueue()
 {
+    // log the progress of sending the state queue
+    Serial.print("Sending the contents of the state message queue: ");
+    Serial.print(reportedQueueCount);
+    Serial.print("/");
+    Serial.println(queueIndex);
+
     noInterrupts();
     int startIndex = reportedQueueCount;
     int endIndex = queueIndex;
@@ -160,28 +174,34 @@ void sendStateQueue()
         client.begin(REPORTING_URL);
         client.addHeader("Content-Type", "application/json");
         int response = client.POST(serialized);
-        Serial.print("Got response: ");
+        Serial.print("Got response code: ");
         Serial.println(response);
 
         // update values after they are reported
         noInterrupts();
-        reportedQueueCount = i;
+        reportedQueueCount = i + 1;
         interrupts();
     }
 }
 
 void IRAM_ATTR interruptHandler()
 {
-    // need to handle debouncing
-    updateStatus();
+    // handle debounce
+    if ((long)(micros() - lastMicros) >= DEBOUNCE_TIME)
+    {
+        lastMicros = micros();
+        // need to handle debouncing
+        updateStatus();
 
-    report();
+        report(CAUSE_INTERRUPT);
+    }
 }
 
-void report()
+void report(int wakeupCause)
 {
-    int wakeupCause = esp_sleep_get_wakeup_cause();
-    printWakeupCause(wakeupCause);
+    // update the timer for how long to wait before deep sleep
+    waitMicros = micros();
+
     printState();
 
     // enqueue the current state
@@ -208,7 +228,11 @@ void setup()
     }
 
     Serial.begin(115200);
-    report();
+
+    int wakeupCause = esp_sleep_get_wakeup_cause();
+    printWakeupCause(wakeupCause);
+    
+    report(wakeupCause);
 
     // blink the led on boot
     blink();
@@ -219,13 +243,16 @@ void setup()
     // send the contents of the message queue once connected
     sendStateQueue();
 
-    // update if any queue messages added every second
-    for (int i = 0; i < SHORT_WAIT_DELAY / 1000; i++)
+    // wait SHORT_WAIT_DELAY for messages to be sent
+    // if any interrupts happen, this timer is reset
+    while (((long)micros() - waitMicros) <= SHORT_WAIT_DELAY)
     {
+        // this delay allows time for the interrupts to be hit
+        delay(1000);
+
         // send state queue if there are any updates
         // this prevents restart for changes in a short amount of time
         sendStateQueue();
-        delay(1000);
     }
 
     // still need to have a way of more frequent deep sleep for pins that are high
