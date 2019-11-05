@@ -1,29 +1,30 @@
 import requests
 import json
-from database import DB
+from database import get_db
 
 
 def get_webhooks():
-    cur = DB.cursor()
-    cur.execute(
-        """
-        SELECT
-        type,
-        endpointUrl,
-        authorizationHeader
-        FROM webhooks
-        WHERE enabled
-        """
-    )
-    output = []
-    for result in cur.fetchall():
-        output.append(
-            {
-                "type": result[0],
-                "endpointUrl": result[1],
-                "authorizationHeader": result[2]
-            }
+    with get_db() as DB:
+        cur = DB.cursor()
+        cur.execute(
+            """
+            SELECT
+            type,
+            endpointUrl,
+            authorizationHeader
+            FROM webhooks
+            WHERE enabled
+            """
         )
+        output = []
+        for result in cur.fetchall():
+            output.append(
+                {
+                    "type": result[0],
+                    "endpointUrl": result[1],
+                    "authorizationHeader": result[2]
+                }
+            )
     return output
 
 

@@ -1,6 +1,6 @@
 from flask import request, Blueprint, jsonify
 import datetime
-from database import DB
+from database import get_db
 from webhook_client import notify_webhooks
 
 sensor_page = Blueprint('sensor_page', __name__)
@@ -14,7 +14,8 @@ cause_mapping = {
     0: "Initial boot-up.",
     3: "Sensor state changed.",
     4: "Timer activated.",
-    100: "Open sensor reverted to closed."
+    100: "Open sensor reverted to closed.",
+    101: "interrupt"
 }
 
 @sensor_page.route("/api/sensor/test")
@@ -26,19 +27,20 @@ def log_sensor():
     """
     Logs sensor data.
     """
-    c = DB.cursor()
-    cause = request.json["cause"]
-    for sensor in request.json["sensors"]:
-        name = sensor["name"]
-        state_bool = sensor["state"]
-        state = 1 if state_bool else 0
+    with get_db() as DB:
+        c = DB.cursor()
+        cause = request.json["cause"]
+        for sensor in request.json["sensors"]:
+            name = sensor["name"]
+            state_bool = sensor["state"]
+            state = 1 if state_bool else 0
 
-        values = (name, state, cause)
-        c.execute("INSERT INTO log (name, state, cause) VALUES (?, ?, ?)", values)
+            values = (name, state, cause)
+            c.execute("INSERT INTO log (name, state, cause) VALUES (?, ?, ?)", values)
 
-        # TODO map the cause to a string
-        notify_webhooks((name, state_bool, cause, state_mapping[state_bool], cause_mapping[cause]))
-    DB.commit()
+            # TODO map the cause to a string
+            notify_webhooks((name, state_bool, cause, state_mapping[state_bool], cause_mapping[cause]))
+        DB.commit()
 
     return "Ok"
 
@@ -61,17 +63,18 @@ def get_sensors_internal():
     WHERE DATE(b.timestamp, 'weekday 0', '-7 days')
     GROUP BY sensor_name
     """
-    c = DB.cursor()
-    c.execute(query)
-    results = c.fetchall()
-    output = []
-    for log_id, name, state, cause, timestamp in results:
-        output.append({
-        "id": log_id,
-        "name": name,
-        "state": state,
-        "cause": cause,
-        "timestamp": timestamp})
+    with get_db() as DB:
+        c = DB.cursor()
+        c.execute(query)
+        results = c.fetchall()
+        output = []
+        for log_id, name, state, cause, timestamp in results:
+            output.append({
+            "id": log_id,
+            "name": name,
+            "state": state,
+            "cause": cause,
+            "timestamp": timestamp})
     return output
 
 @sensor_page.route("/api/sensor", methods = ["GET"])
@@ -83,15 +86,16 @@ def get_sensor(name: str):
     """
     Gets the last reported state of the sensor.
     """
-    c = DB.cursor()
-    c.execute("""
-        SELECT id, name, state, cause, timestamp FROM log 
-        WHERE name = ?
-        ORDER BY timestamp DESC
-    """, (name, )
-    )
+    with get_db() as DB:
+        c = DB.cursor()
+        c.execute("""
+            SELECT id, name, state, cause, timestamp FROM log 
+            WHERE name = ?
+            ORDER BY timestamp DESC
+        """, (name, )
+        )
 
-    log_id, name, state, cause, timestamp = c.fetchone()
+        log_id, name, state, cause, timestamp = c.fetchone()
     return jsonify({
         "id": log_id,
         "name": name,
@@ -108,17 +112,18 @@ def get_sensor_history_internal(name: str, any: bool):
     ORDER BY timestamp DESC
     LIMIT 50
     """
-    c = DB.cursor()
-    c.execute(query, (name, any))
-    results = c.fetchall()
-    output = []
-    for log_id, name, state, cause, timestamp in results:
-        output.append({
-        "id": log_id,
-        "name": name,
-        "state": state,
-        "cause": cause,
-        "timestamp": timestamp})
+    with get_db() as DB:
+        c = DB.cursor()
+        c.execute(query, (name, any))
+        results = c.fetchall()
+        output = []
+        for log_id, name, state, cause, timestamp in results:
+            output.append({
+            "id": log_id,
+            "name": name,
+            "state": state,
+            "cause": cause,
+            "timestamp": timestamp})
     return output
 
 @sensor_page.route("/api/sensor/history", methods = ["GET"])
