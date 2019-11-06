@@ -13,11 +13,38 @@
 // interrupt has not fired
 #define POLL_TIMER (6 * 3600000000) // 6 * 1 hour
 
-// the amount of time to wait for pins to go LOW
-// if they were open
-#define SHORT_WAIT_DELAY (15000 * 1000) // 15 seconds
+// the amount of time to wait for interrupts before going low
+#define SHORT_WAIT_DELAY (5000 * 1000) // 15 seconds
 
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR int shortSleepCounter = 0;
+
+#define SHORT_SLEEP_TIMES 11
+unsigned long shortSleepTimes[] = 
+{
+    // 1 minute
+    1 * 60 * 1000 * 1000,
+    // 1 minute
+    1 * 60 * 1000 * 1000,
+    // 2 minutes
+    2 * 60 * 1000 * 1000,
+    // 3 minutes
+    3 * 60 * 1000 * 1000,
+    // 5 minutes
+    5 * 60 * 1000 * 1000,
+    // 8 minutes
+    8 * 60 * 1000 * 1000,
+    // 13 minutes
+    13 * 60 * 1000 * 1000,
+    // 21 minutes
+    21 * 60 * 1000 * 1000,
+    // 34 minutes
+    34 * 60 * 1000 * 1000,
+    // 55 minutes
+    55 * 60 * 1000 * 1000,
+    // 1 hour
+    60 * 60 * 1000 * 1000,
+};
 
 long lastMicros = 0;
 long waitMicros = 0;
@@ -74,10 +101,44 @@ void printState()
     }
 }
 
+// set up the deep sleep wakeup handlers
 void setupWakeup()
 {
+    // if all pins are LOW, so all of the pin handlers can be used, then
+    // the sleep timer can be very long, up to hours
+    // but if one or more pins are HIGH, these handlers cannot be used,
+    // so the sleep timer should be short, and grow exponentially from 1 minute to 1 hour
+    bool anyHigh = false;
+    for (auto sensor : sensors)
+    {
+        anyHigh |= sensor.state;
+    }
+
+    int state;
+
     // timer wakeup
-    int state = esp_sleep_enable_timer_wakeup(POLL_TIMER);
+    if (anyHigh)
+    {
+        // use short timer
+        shortSleepCounter = shortSleepCounter + 1;
+        if (shortSleepCounter > SHORT_SLEEP_TIMES)
+        {
+            shortSleepCounter = SHORT_SLEEP_TIMES;
+        }
+
+        unsigned long time = shortSleepTimes[shortSleepCounter - 1];
+        Serial.print("Short sleep for time: ");
+        Serial.println(time);
+        state = esp_sleep_enable_timer_wakeup(time);
+    }
+    else
+    {
+        // reset the sleep counter
+        shortSleepCounter = 0;
+        // use long timer
+        state = esp_sleep_enable_timer_wakeup(POLL_TIMER);
+    }
+
     if (state != ESP_OK)
     {
         Serial.println("Got error when setting timer wakeup.");
@@ -87,7 +148,11 @@ void setupWakeup()
     uint64_t mask = 0;
     for (auto sensor : sensors)
     {
-        mask |= ((unsigned long long)1 << sensor.pin);
+        // only set the mask if the pin is LOW
+        if (!sensor.state)
+        {
+            mask |= ((unsigned long long)1 << sensor.pin);
+        }
     }
     
     state = esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_HIGH);
@@ -106,7 +171,7 @@ void connectWifi()
     WiFi.begin(WIFI_SSID, WIFI_PSK);
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(1500);
+        delay(100);
         Serial.println("Connecting to wifi...");
     }
     // connected
@@ -248,7 +313,7 @@ void setup()
     while (((long)micros() - waitMicros) <= SHORT_WAIT_DELAY)
     {
         // this delay allows time for the interrupts to be hit
-        delay(1000);
+        delay(100);
 
         // send state queue if there are any updates
         // this prevents restart for changes in a short amount of time
